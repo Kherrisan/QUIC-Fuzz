@@ -6,7 +6,7 @@ Our work is currently being prepared for submission. We will publish our work on
 Thank you.
 
 #### Overview of the (fixed) software bugs discovered in the fuzzing campaign with QUIC-Fuzz.
-![Software bugs found by QUIC-Fuzz](results/fixed_bugs_table.png)
+![Software bugs found by QUIC-Fuzz](results/fixed_bugs.png)
 
 ### Four bug (fixed) case studies found by QUIC-Fuzz
 #### (M1) Double-free error in Picotls when processing an unexpected public key length.
