@@ -5,6 +5,8 @@ Our work is currently being prepared for submission. We will publish our work on
 
 Thank you.
 
+![Software bugs found by QUIC-Fuzz](results/fixed_bugs_table.png)
+
 ### Four bug (fixed) case studies found by QUIC-Fuzz
 #### (M1) Double-free error in Picotls when processing an unexpected public key length.
 When analysing the crashes found on the Picoquic server, we identified a bug causing the server to crash; this indicated a double-free error. This issue arises from the implementation of their TLS library, Picotls. Specifically, when Picotls encounters an unexpected value in the x25519 public key length field of the Client Hello TLS message, it frees the memory allocated for the public key twice. Interestingly, the Quicly server also uses Picotls as its TLS library, but this bug was not observed in Quicly because we configured it to use the secp256r1 elliptic curve group, which is unaffected by the issue. However, if we configure the Quicly server to use the x25519 elliptic curve group, we can crash the server using the same crashing seed found on Picoquic. This vulnerability can therefore affect the Picoquic and Quicly servers equally depending on their TLS configuration.
