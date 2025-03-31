@@ -1,0 +1,78 @@
+diff --git a/include/xquic/xqc_configure.h b/include/xquic/xqc_configure.h
+index fa13e49..32f4cd9 100644
+--- a/include/xquic/xqc_configure.h
++++ b/include/xquic/xqc_configure.h
+@@ -2,8 +2,8 @@
+ #define xquic_VERSION_MAJOR 0
+ #define xquic_VERSION_MINOR 1
+ 
+-/* #undef XQC_ENABLE_BBR2 */
+-/* #undef XQC_ENABLE_RENO */
++#define XQC_ENABLE_BBR2
++#define XQC_ENABLE_RENO
+ /* #undef XQC_ENABLE_COPA */
+ /* #undef XQC_ENABLE_UNLIMITED */
+ /* #undef XQC_ENABLE_MP_INTEROP */
+diff --git a/src/tls/xqc_tls.c b/src/tls/xqc_tls.c
+index 3b68679..c28b7b1 100644
+--- a/src/tls/xqc_tls.c
++++ b/src/tls/xqc_tls.c
+@@ -1061,7 +1061,11 @@ xqc_ssl_cert_cb(SSL *ssl, void *arg)
+         return XQC_SSL_FAIL;
+     }
+ 
+-    hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
++    // hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
++    // QUIC-Fuzz ADDED HERE
++    hostname = "test.xquic.com";
++    // QUIC-Fuzz ADDED END
++
+     if (NULL == hostname) {
+         xqc_log(tls->log, XQC_LOG_ERROR, "|hostname is NULL");
+         return XQC_SSL_FAIL;
+diff --git a/src/transport/xqc_conn.c b/src/transport/xqc_conn.c
+index 62ac699..ca05392 100644
+--- a/src/transport/xqc_conn.c
++++ b/src/transport/xqc_conn.c
+@@ -2243,7 +2243,9 @@ xqc_process_packet_without_pn(xqc_connection_t *conn, xqc_path_ctx_t *path, xqc_
+     ssize_t sent = xqc_send(conn, path, packet_out->po_buf, packet_out->po_used_size);
+     xqc_log(conn->log, XQC_LOG_INFO, "|<==|conn:%p|size:%ud|sent:%z|pkt_type:%s|",
+             conn, packet_out->po_used_size, sent, xqc_pkt_type_2_str(packet_out->po_pkt.pkt_type));
+-    xqc_log_event(conn->log, TRA_PACKET_SENT, conn, packet_out, NULL, 0, sent, 0);
++    // QUIC-Fuzz ADDED HERE fixed NULL pointer dereference
++    // xqc_log_event(conn->log, TRA_PACKET_SENT, conn, packet_out, NULL, 0, sent, 0);
++    xqc_log_event(conn->log, TRA_PACKET_SENT, conn, packet_out, path, 0, sent, 0);
+     if (sent > 0) {
+         xqc_conn_log_sent_packet(conn, packet_out, xqc_monotonic_timestamp());
+     }
+diff --git a/tests/test_server.c b/tests/test_server.c
+index 7dda648..faced29 100644
+--- a/tests/test_server.c
++++ b/tests/test_server.c
+@@ -2075,6 +2075,7 @@ int main(int argc, char *argv[]) {
+ 
+     signal(SIGINT, stop);
+     signal(SIGTERM, stop);
++    signal(SIGUSR1, stop); //dump llvm source code-based coverage here
+ 
+     g_send_body_size = 1024*1024;
+     g_send_body_size_defined = 0;
+@@ -2314,8 +2315,15 @@ int main(int argc, char *argv[]) {
+ 
+     xqc_engine_ssl_config_t  engine_ssl_config;
+     memset(&engine_ssl_config, 0, sizeof(engine_ssl_config));
+-    engine_ssl_config.private_key_file = "./server.key";
+-    engine_ssl_config.cert_file = "./server.crt";
++
++    // engine_ssl_config.private_key_file = "./server.key";
++    // engine_ssl_config.cert_file = "./server.crt";
++
++    // QUIC-Fuzz ADDED HERE
++    engine_ssl_config.private_key_file = "/tmp/secrets/serverCert/xquic.key";
++    engine_ssl_config.cert_file = "/tmp/secrets/serverCert/xquic.crt";
++    // QUIC-Fuzz ADDED END
++
+     engine_ssl_config.ciphers = XQC_TLS_CIPHERS;
+     engine_ssl_config.groups = XQC_TLS_GROUPS;
+ 
+ 

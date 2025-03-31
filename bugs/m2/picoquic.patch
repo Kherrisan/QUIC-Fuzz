@@ -1,0 +1,50 @@
+diff --git a/picoquic/quicctx.c b/picoquic/quicctx.c
+index fd5e2a13..f5ec10cd 100644
+--- a/picoquic/quicctx.c
++++ b/picoquic/quicctx.c
+@@ -1474,13 +1474,31 @@ int picoquic_get_version_index(uint32_t proposed_version)
+ 
+ static void picoquic_create_random_cnx_id(picoquic_quic_t* quic, picoquic_connection_id_t * cnx_id, uint8_t id_length)
+ {
++    //  ADDED HERE
++    // hardcode connection ID
++    static int conn_id = 1;
++
+     if (id_length > 0) {
+-        picoquic_crypto_random(quic, cnx_id->id, id_length);
++        // picoquic_crypto_random(quic, cnx_id->id, id_length);
++
++        for(int i=0; i< id_length; i++){
++            cnx_id->id[i] = conn_id;
++        }
++
++        conn_id += 1;
++
++        if(conn_id == 255){
++            conn_id = 1;
++        }
+     }
++
+     if (id_length < sizeof(cnx_id->id)) {
+         memset(cnx_id->id + id_length, 0, sizeof(cnx_id->id) - id_length);
+     }
++
+     cnx_id->id_len = id_length;
++
++    // ADDED END
+ }
+ 
+ void picoquic_create_local_cnx_id(picoquic_quic_t* quic, picoquic_connection_id_t* cnx_id, uint8_t id_length, picoquic_connection_id_t cnx_id_remote)
+diff --git a/picoquic/sockloop.c b/picoquic/sockloop.c
+index 7d7c4ea0..b5916b55 100644
+--- a/picoquic/sockloop.c
++++ b/picoquic/sockloop.c
+@@ -89,6 +89,8 @@
+ 
+ #include <pthread.h>
+ 
++int pthread_setname_np(pthread_t thread, const char *name);  // Explicit declaration
++
+ #ifndef SOCKET_TYPE
+ #define SOCKET_TYPE int
+ #endif

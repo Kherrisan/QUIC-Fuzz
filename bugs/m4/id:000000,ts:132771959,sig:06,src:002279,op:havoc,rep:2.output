@@ -1,0 +1,26 @@
+No token file present. Will create one as <demo_token_store.bin>.
+AddressSanitizer:DEADLYSIGNAL
+=================================================================
+==1281782==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000020 (pc 0x55a8ca395333 bp 0x7ffd89c262b0 sp 0x7ffd89c26200 T0)
+==1281782==The signal is caused by a READ memory access.
+==1281782==Hint: address points to the zero page.
+    #0 0x55a8ca395333 in h3zero_callback_datagram /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picohttp/h3zero_common.c:1529:33
+    #1 0x55a8ca396d5b in h3zero_callback /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picohttp/h3zero_common.c:1764:10
+    #2 0x55a8ca25c8f5 in picoquic_decode_datagram_frame /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/frames.c:4810:13
+    #3 0x55a8ca262824 in picoquic_decode_frames /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/frames.c:5868:25
+    #4 0x55a8ca299f27 in picoquic_incoming_1rtt /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/packet.c:2356:19
+    #5 0x55a8ca29c692 in picoquic_incoming_segment /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/packet.c:2671:23
+    #6 0x55a8ca29e8fb in picoquic_process_sooner_packets /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/packet.c:2857:23
+    #7 0x55a8ca3014e6 in picoquic_prepare_packet_ex /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sender.c:4304:9
+    #8 0x55a8ca306977 in picoquic_prepare_next_packet_ex /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sender.c:4569:19
+    #9 0x55a8ca30a3d7 in picoquic_packet_loop_v3 /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sockloop.c:884:23
+    #10 0x55a8ca30c117 in picoquic_packet_loop_v2 /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sockloop.c:1038:11
+    #11 0x55a8ca30c117 in picoquic_packet_loop /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sockloop.c:1061:12
+    #12 0x55a8ca204a4d in quic_server /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicfirst/picoquicdemo.c:360:15
+    #13 0x55a8ca20d501 in main /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicfirst/picoquicdemo.c:1332:15
+    #14 0x7fbb3b7f8082 in __libc_start_main /build/glibc-LcI20x/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #15 0x55a8ca12bd3d in _start (/home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicdemo+0x66d3d) (BuildId: 599165e114c17d067c23077f9394739304bfb90c)
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picohttp/h3zero_common.c:1529:33 in h3zero_callback_datagram
+==1281782==ABORTING

@@ -1,0 +1,24 @@
+AddressSanitizer:DEADLYSIGNAL
+=================================================================
+==117028==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000028 (pc 0x55bcb21210f0 bp 0x7ffc806a9820 sp 0x7ffc806a9770 T0)
+==117028==The signal is caused by a READ memory access.
+==117028==Hint: address points to the zero page.
+    #0 0x55bcb21210f0 in xqc_list_empty /home/kai/research/quic-fuzz/quicServers/xquic/src/common/xqc_list.h:132:23
+    #1 0x55bcb21210f0 in xqc_h3_ext_bytestream_should_notify_read /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_ext_bytestream.c:631:9
+    #2 0x55bcb20e88cc in xqc_h3_stream_read_notify /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:1866:16
+    #3 0x55bcb219d91c in xqc_process_read_streams /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_stream.c:1643:15
+    #4 0x55bcb212a3e4 in xqc_engine_process_conn /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:740:9
+    #5 0x55bcb212c382 in xqc_engine_main_logic /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:907:9
+    #6 0x55bcb212b6bc in xqc_engine_main_logic_internal /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:848:5
+    #7 0x55bcb212b6bc in xqc_engine_finish_recv /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:838:5
+    #8 0x55bcb20ccacd in xqc_server_socket_read_handler /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1693:5
+    #9 0x55bcb20d2d9a in xqc_server_socket_event_callback /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1707:9
+    #10 0x7fccf078013e  (/lib/x86_64-linux-gnu/libevent-2.1.so.7+0x2113e) (BuildId: fa530767e61eeaced04441ac79362efa83c08dd0)
+    #11 0x7fccf078087e in event_base_loop (/lib/x86_64-linux-gnu/libevent-2.1.so.7+0x2187e) (BuildId: fa530767e61eeaced04441ac79362efa83c08dd0)
+    #12 0x55bcb20d1124 in main /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:2634:5
+    #13 0x7fccf015e082 in __libc_start_main /build/glibc-LcI20x/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #14 0x55bcb1fee66d in _start (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0x8d66d) (BuildId: 15f98ad87b20d1e852b2fe3bcbaeeb24b7d02a22)
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV /home/kai/research/quic-fuzz/quicServers/xquic/src/common/xqc_list.h:132:23 in xqc_list_empty
+==117028==ABORTING

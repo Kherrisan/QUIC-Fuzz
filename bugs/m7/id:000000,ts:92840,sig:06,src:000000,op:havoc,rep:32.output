@@ -1,0 +1,59 @@
+=================================================================
+==2891920==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7f8eae1002a8 at pc 0x55b2a2ad1c73 bp 0x7ffd8a699170 sp 0x7ffd8a699168
+READ of size 1 at 0x7f8eae1002a8 thread T0
+    #0 0x55b2a2ad1c72 in xqc_vsprintf /home/kai/research/quic-fuzz/quicServers/xquic/src/common/xqc_str.c:107:28
+    #1 0x55b2a2ad2bb7 in xqc_log_implement /home/kai/research/quic-fuzz/quicServers/xquic/src/common/xqc_log.c:215:9
+    #2 0x55b2a2a9595d in xqc_process_path_challenge_frame /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_frame.c:1447:5
+    #3 0x55b2a2a8a5a6 in xqc_process_frames /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_frame.c:267:19
+    #4 0x55b2a2a8894b in xqc_packet_decrypt_single /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_packet.c:183:15
+    #5 0x55b2a2a88da4 in xqc_packet_process_single /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_packet.c:226:11
+    #6 0x55b2a2a0f01d in xqc_conn_process_packet /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_conn.c:4208:15
+    #7 0x55b2a29e631f in xqc_engine_packet_process /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:1278:11
+    #8 0x55b2a29829a9 in xqc_server_socket_read_handler /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1679:15
+    #9 0x55b2a2988d9a in xqc_server_socket_event_callback /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1707:9
+    #10 0x7f8eb0d9c13e  (/lib/x86_64-linux-gnu/libevent-2.1.so.7+0x2113e) (BuildId: fa530767e61eeaced04441ac79362efa83c08dd0)
+    #11 0x7f8eb0d9c87e in event_base_loop (/lib/x86_64-linux-gnu/libevent-2.1.so.7+0x2187e) (BuildId: fa530767e61eeaced04441ac79362efa83c08dd0)
+    #12 0x55b2a2987124 in main /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:2634:5
+    #13 0x7f8eb077a082 in __libc_start_main /build/glibc-LcI20x/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #14 0x55b2a28a466d in _start (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0x8d66d) (BuildId: 87c132697d58261e073cb7d427eec890cd7f37e7)
+
+Address 0x7f8eae1002a8 is located in stack of thread T0 at offset 40 in frame
+    #0 0x55b2a2a955ef in xqc_process_path_challenge_frame /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_frame.c:1407
+
+  This frame has 1 object(s):
+    [32, 40) 'path_challenge_data' (line 1409) <== Memory access at offset 40 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /home/kai/research/quic-fuzz/quicServers/xquic/src/common/xqc_str.c:107:28 in xqc_vsprintf
+Shadow bytes around the buggy address:
+  0x7f8eae100000: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0x7f8eae100080: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0x7f8eae100100: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0x7f8eae100180: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0x7f8eae100200: f5 f5 f5 f5 f5 f5 f5 f5 f1 f1 f1 f1 00 f3 f3 f3
+=>0x7f8eae100280: f1 f1 f1 f1 00[f3]f3 f3 00 00 00 00 00 00 00 00
+  0x7f8eae100300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7f8eae100380: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7f8eae100400: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7f8eae100480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7f8eae100500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==2891920==ABORTING

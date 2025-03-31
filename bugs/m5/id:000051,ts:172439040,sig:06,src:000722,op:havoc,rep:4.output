@@ -1,0 +1,2 @@
+transport close:code=0x0;frame=2738188573441261568;reason=
+cli: /home/kai/research/quic-fuzz/quicServers/quicly/lib/quicly.c:5676: int on_end_closing(quicly_sentmap_t *, const quicly_sent_packet_t *, int, quicly_sent_t *): Assertion `!acked' failed.

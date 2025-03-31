@@ -1,0 +1,49 @@
+diff --git a/deps/picotls b/deps/picotls
+--- a/deps/picotls
++++ b/deps/picotls
+@@ -1 +1 @@
+-Subproject commit 9de892ccf7b1d3dc9467ef92ba9314c155928037
++Subproject commit 9de892ccf7b1d3dc9467ef92ba9314c155928037-dirty
+diff --git a/src/cli.c b/src/cli.c
+index 5463095..b212b75 100644
+--- a/src/cli.c
++++ b/src/cli.c
+@@ -47,6 +47,7 @@
+ #include "quicly/defaults.h"
+ #include "quicly/streambuf.h"
+ #include "../deps/picotls/t/util.h"
++#include <signal.h>
+ 
+ #define MAX_BURST_PACKETS 10
+ 
+@@ -1257,6 +1258,10 @@ static void push_req(const char *path, int to_file)
+     memset(reqs + i + 1, 0, sizeof(*reqs));
+ }
+ 
++void dump_coverage(){
++    exit(0);
++}
++
+ int main(int argc, char **argv)
+ {
+     const char *cert_file = NULL, *raw_pubkey_file = NULL, *host, *port, *cid_key = NULL;
+@@ -1265,6 +1270,8 @@ int main(int argc, char **argv)
+     unsigned udpbufsize = 0;
+     int ch, opt_index, fd;
+ 
++    signal(SIGUSR1, dump_coverage);
++
+     ERR_load_crypto_strings();
+     OpenSSL_add_all_algorithms();
+ #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+@@ -1649,6 +1656,10 @@ int main(int argc, char **argv)
+     if (use_cid_encryptor) {
+         if (cid_key == NULL) {
+             static char random_key[17];
++            // QUIC-Fuzz ADDED HERE
++            // hardcode the server cid, but we can set this in command line see -B option
++            // static char random_key[17] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
++            // QUIC-Fuzz ADDED END
+             tlsctx.random_bytes(random_key, sizeof(random_key) - 1);
+             cid_key = random_key;
+         }

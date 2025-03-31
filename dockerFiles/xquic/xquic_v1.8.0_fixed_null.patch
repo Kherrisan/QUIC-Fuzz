@@ -1,0 +1,65 @@
+diff --git a/src/tls/xqc_tls.c b/src/tls/xqc_tls.c
+index 2c69e22..0db7981 100644
+--- a/src/tls/xqc_tls.c
++++ b/src/tls/xqc_tls.c
+@@ -1061,7 +1061,11 @@ xqc_ssl_cert_cb(SSL *ssl, void *arg)
+         return XQC_SSL_FAIL;
+     }
+ 
+-    hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
++    // hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
++    // QUIC-Fuzz ADDED HERE
++    hostname = "test.xquic.com";
++    // QUIC-Fuzz ADDED END
++
+     if (NULL == hostname) {
+         xqc_log(tls->log, XQC_LOG_ERROR, "|hostname is NULL");
+         return XQC_SSL_FAIL;
+diff --git a/src/transport/xqc_conn.c b/src/transport/xqc_conn.c
+index 62ac699..ca05392 100644
+--- a/src/transport/xqc_conn.c
++++ b/src/transport/xqc_conn.c
+@@ -2243,7 +2243,9 @@ xqc_process_packet_without_pn(xqc_connection_t *conn, xqc_path_ctx_t *path, xqc_
+     ssize_t sent = xqc_send(conn, path, packet_out->po_buf, packet_out->po_used_size);
+     xqc_log(conn->log, XQC_LOG_INFO, "|<==|conn:%p|size:%ud|sent:%z|pkt_type:%s|",
+             conn, packet_out->po_used_size, sent, xqc_pkt_type_2_str(packet_out->po_pkt.pkt_type));
+-    xqc_log_event(conn->log, TRA_PACKET_SENT, conn, packet_out, NULL, 0, sent, 0);
++    // QUIC-Fuzz ADDED HERE fixed NULL pointer dereference
++    // xqc_log_event(conn->log, TRA_PACKET_SENT, conn, packet_out, NULL, 0, sent, 0);
++    xqc_log_event(conn->log, TRA_PACKET_SENT, conn, packet_out, path, 0, sent, 0);
+     if (sent > 0) {
+         xqc_conn_log_sent_packet(conn, packet_out, xqc_monotonic_timestamp());
+     }
+diff --git a/tests/test_server.c b/tests/test_server.c
+index 88ed65c..0a9a103 100644
+--- a/tests/test_server.c
++++ b/tests/test_server.c
+@@ -2357,8 +2357,15 @@ int main(int argc, char *argv[]) {
+ 
+     xqc_engine_ssl_config_t  engine_ssl_config;
+     memset(&engine_ssl_config, 0, sizeof(engine_ssl_config));
+-    engine_ssl_config.private_key_file = "./server.key";
+-    engine_ssl_config.cert_file = "./server.crt";
++    
++    // engine_ssl_config.private_key_file = "./server.key";
++    // engine_ssl_config.cert_file = "./server.crt";
++
++    // QUIC-Fuzz ADDED HERE
++    engine_ssl_config.private_key_file = "/tmp/secrets/serverCert/xquic.key";
++    engine_ssl_config.cert_file = "/tmp/secrets/serverCert/xquic.crt";
++    // QUIC-Fuzz ADDED END
++
+     engine_ssl_config.ciphers = XQC_TLS_CIPHERS;
+     engine_ssl_config.groups = XQC_TLS_GROUPS;
+ 
+@@ -2708,6 +2715,10 @@ int main(int argc, char *argv[]) {
+         return 0;
+     }
+ 
++#ifdef __AFL_HAVE_MANUAL_CONTROL
++  __AFL_INIT();
++#endif
++
+     ctx.ev_socket = event_new(eb, ctx.fd, EV_READ | EV_PERSIST, xqc_server_socket_event_callback, &ctx);
+ 
+     event_add(ctx.ev_socket, NULL);

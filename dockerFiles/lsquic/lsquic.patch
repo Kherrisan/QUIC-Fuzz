@@ -1,0 +1,62 @@
+diff --git a/bin/prog.c b/bin/prog.c
+index 915e848..2c01b15 100644
+--- a/bin/prog.c
++++ b/bin/prog.c
+@@ -608,6 +608,11 @@ prog_run (struct prog *prog)
+     evsignal_add(prog->prog_usr2, NULL);
+ #endif
+ 
++// QUIC-Fuzz ADDED HERE
++// #ifdef __AFL_HAVE_MANUAL_CONTROL
++//   __AFL_INIT();
++// #endif
++
+     event_base_loop(prog->prog_eb, 0);
+ 
+     return 0;
+diff --git a/src/liblsquic/lsquic_conn.c b/src/liblsquic/lsquic_conn.c
+index 3ee9bb4..0638abe 100644
+--- a/src/liblsquic/lsquic_conn.c
++++ b/src/liblsquic/lsquic_conn.c
+@@ -226,15 +226,34 @@ lsquic_conn_abort (struct lsquic_conn *lconn)
+ void
+ lsquic_generate_cid (lsquic_cid_t *cid, size_t len)
+ {
+-    if (!len)
+-    {
+-        /* If not set, generate ID between 8 and MAX_CID_LEN bytes in length */
+-        RAND_bytes((uint8_t *) &len, sizeof(len));
+-        len %= MAX_CID_LEN - 7;
+-        len += 8;
++    // QUIC-Fuzz ADDED HERE
++    static uint8_t con_id = 1;
++
++    if(!len){
++        len = 8;
++    }
++
++    for(unsigned int i=0; i<len; i++){
++        cid->buf[i] = con_id;
+     }
+-    RAND_bytes(cid->idbuf, len);
++
+     cid->len = len;
++    con_id += 1;
++
++    if(con_id == 255){
++        con_id = 1;
++    }
++    // QUIC-Fuzz ADDED END
++
++    // if (!len)
++    // {
++    //     /* If not set, generate ID between 8 and MAX_CID_LEN bytes in length */
++    //     RAND_bytes((uint8_t *) &len, sizeof(len));
++    //     len %= MAX_CID_LEN - 7;
++    //     len += 8;
++    // }
++    // RAND_bytes(cid->idbuf, len);
++    // cid->len = len;
+ }
+ 
+ 

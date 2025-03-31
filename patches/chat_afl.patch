@@ -1,0 +1,816 @@
+diff --git a/ChatAFL/Makefile b/ChatAFL/Makefile
+index 8ea91e9..12146e3 100644
+--- a/ChatAFL/Makefile
++++ b/ChatAFL/Makefile
+@@ -24,7 +24,7 @@ MISC_PATH   = $(PREFIX)/share/afl
+ 
+ # PROGS intentionally omit afl-as, which gets installed elsewhere.
+ 
+-PROGS       = afl-gcc afl-fuzz afl-replay aflnet-replay aflnet-client afl-showmap afl-tmin afl-gotcpu afl-analyze
++PROGS       = afl-gcc afl-fuzz afl-showmap afl-tmin afl-gotcpu afl-analyze #aflnet-client afl-replay aflnet-replay
+ SH_PROGS    = afl-plot afl-cmin afl-whatsup
+ 
+ CFLAGS     ?= -O3 -funroll-loops
+@@ -69,17 +69,17 @@ afl-as: afl-as.c afl-as.h $(COMM_HDR) | test_x86
+ 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
+ 	ln -sf afl-as as
+ 
+-afl-fuzz: afl-fuzz.c $(COMM_HDR) aflnet.o aflnet.h chat-llm.o chat-llm.h | test_x86
+-	$(CC) $(CFLAGS) $@.c aflnet.o chat-llm.o -o $@ $(LDFLAGS) -lcurl -ljson-c -lpcre2-8
++afl-fuzz: afl-fuzz.c $(COMM_HDR) aflnet.o aflnet.h chat-llm.o chat-llm.h quic.o quic.h | test_x86
++	$(CC) $(CFLAGS) $@.c aflnet.o chat-llm.o quic.o -o $@ $(LDFLAGS) -lcurl -ljson-c -lpcre2-8
+ 
+-afl-replay: afl-replay.c $(COMM_HDR) aflnet.o aflnet.h | test_x86
+-	$(CC) $(CFLAGS) $@.c aflnet.o -o $@ $(LDFLAGS)
++# afl-replay: afl-replay.c $(COMM_HDR) aflnet.o aflnet.h | test_x86
++# 	$(CC) $(CFLAGS) $@.c aflnet.o -o $@ $(LDFLAGS)
+ 
+-aflnet-replay: aflnet-replay.c $(COMM_HDR) aflnet.o aflnet.h | test_x86
+-	$(CC) $(CFLAGS) $@.c aflnet.o -o $@ $(LDFLAGS)
++# aflnet-replay: aflnet-replay.c $(COMM_HDR) aflnet.o aflnet.h | test_x86
++# 	$(CC) $(CFLAGS) $@.c aflnet.o -o $@ $(LDFLAGS)
+ 
+-aflnet-client: aflnet-client.c $(COMM_HDR) aflnet.o aflnet.h | test_x86
+-	$(CC) $(CFLAGS) $@.c aflnet.o -o $@ $(LDFLAGS)
++# aflnet-client: aflnet-client.c $(COMM_HDR) aflnet.o aflnet.h | test_x86
++# 	$(CC) $(CFLAGS) $@.c aflnet.o -o $@ $(LDFLAGS)
+ 
+ afl-showmap: afl-showmap.c $(COMM_HDR) | test_x86
+ 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
+diff --git a/ChatAFL/afl-fuzz.c b/ChatAFL/afl-fuzz.c
+index 145ef48..9004865 100644
+--- a/ChatAFL/afl-fuzz.c
++++ b/ChatAFL/afl-fuzz.c
+@@ -73,6 +73,8 @@
+ #include <graphviz/gvc.h>
+ #include <math.h>
+ 
++#include "quic.h"
++
+ #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+ #include <sys/sysctl.h>
+ #endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ */
+@@ -112,6 +114,8 @@ static u32 hang_tmout = EXEC_TIMEOUT; /* Timeout used for hang det (ms)   */
+ 
+ EXP_ST u64 mem_limit = MEM_LIMIT; /* Memory cap for child (MB)        */
+ 
++EXP_ST u32 cpu_to_bind = 0;           /* id of free CPU core to bind      */ // QUIC-Fuzz ADDED HERE
++
+ static u32 stats_update_freq = 1; /* Stats update frequency (execs)   */
+ 
+ EXP_ST u8 skip_deterministic, /* Skip deterministic stages?       */
+@@ -122,6 +126,8 @@ EXP_ST u8 skip_deterministic, /* Skip deterministic stages?       */
+     kill_signal,              /* Signal that killed the child     */
+     resuming_fuzz,            /* Resuming an older fuzzing job?   */
+     timeout_given,            /* Specific timeout given?          */
++    cpu_to_bind_given,         /* Specified cpu_to_bind given?     */ // QUIC-Fuzz ADDED HERE
++    ignore_sigint,             /* Ignore SIGINT when detect crash  */ // QUIC-Fuzz ADDED HERE
+     not_on_tty,               /* stdout is not a tty              */
+     term_too_small,           /* terminal dimensions too small    */
+     uses_asan,                /* Target uses ASAN?                */
+@@ -1600,9 +1606,18 @@ static void bind_to_free_cpu(void)
+ 
+   closedir(d);
+ 
+-  for (i = 0; i < cpu_core_count; i++)
+-    if (!cpu_used[i])
+-      break;
++if(cpu_to_bind_given){
++    if (cpu_to_bind >= cpu_core_count)
++      FATAL("The CPU core id to bind should be between 0 and %u", cpu_core_count - 1);
++    
++    if (cpu_used[cpu_to_bind])
++      FATAL("The CPU core #%u to bind is not free!", cpu_to_bind);
++
++    i = cpu_to_bind;
++  }else{
++    for (i = 0; i < cpu_core_count; i++) if (!cpu_used[i]) break;
++  }
++
+ 
+   if (i == cpu_core_count)
+   {
+@@ -3944,6 +3959,9 @@ static u8 run_target(char **argv, u32 timeout)
+     if (kill_signal == SIGTERM)
+       return FAULT_NONE;
+ 
++    if (kill_signal == SIGINT && ignore_sigint) 
++      return FAULT_NONE;
++
+     return FAULT_CRASH;
+   }
+ 
+@@ -4500,7 +4518,7 @@ static void pivot_inputs(void)
+         use_name += 6;
+       else
+         use_name = rsl;
+-      nfn = alloc_printf("%s/queue/id:%06u,orig:%s", out_dir, id, use_name);
++      nfn = alloc_printf("%s/queue/id:%06u,ts:%lld,orig:%s", out_dir, id, get_cur_time() - start_time, use_name);
+ 
+ #else
+ 
+@@ -4650,8 +4668,8 @@ static u8 save_if_interesting(char **argv, void *mem, u32 len, u8 fault)
+ 
+ #ifndef SIMPLE_FILES
+ 
+-    fn = alloc_printf("%s/queue/id:%06u,%s", out_dir, queued_paths,
+-                      describe_op(hnb));
++    fn = alloc_printf("%s/queue/id:%06u,ts:%lld,%s", out_dir, queued_paths,
++                      get_cur_time() - start_time, describe_op(hnb));
+ 
+ #else
+ 
+@@ -4750,8 +4768,8 @@ static u8 save_if_interesting(char **argv, void *mem, u32 len, u8 fault)
+ 
+ #ifndef SIMPLE_FILES
+ 
+-    fn = alloc_printf("%s/replayable-hangs/id:%06llu,%s", out_dir,
+-                      unique_hangs, describe_op(0));
++    fn = alloc_printf("%s/replayable-hangs/id:%06llu,ts:%lld,%s", out_dir,
++                      unique_hangs, get_cur_time() - start_time, describe_op(0));
+ 
+ #else
+ 
+@@ -4797,8 +4815,8 @@ static u8 save_if_interesting(char **argv, void *mem, u32 len, u8 fault)
+ 
+ #ifndef SIMPLE_FILES
+ 
+-    fn = alloc_printf("%s/replayable-crashes/id:%06llu,sig:%02u,%s", out_dir,
+-                      unique_crashes, kill_signal, describe_op(0));
++    fn = alloc_printf("%s/replayable-crashes/id:%06llu,ts:%lld,sig:%02u,%s", out_dir,
++                      unique_crashes, get_cur_time() - start_time, kill_signal, describe_op(0));
+ 
+ #else
+ 
+@@ -6306,6 +6324,10 @@ EXP_ST u8 common_fuzz_stuff(char **argv, u8 *out_buf, u32 len)
+   if (!(stage_cur % stats_update_freq) || stage_cur + 1 == stage_max)
+     show_stats();
+ 
++  if(is_quic){
++    reset_quic_info();
++  }
++
+   return 0;
+ }
+ 
+@@ -10216,7 +10238,7 @@ int main(int argc, char **argv)
+   gettimeofday(&tv, &tz);
+   srandom(tv.tv_sec ^ tv.tv_usec ^ getpid());
+ 
+-  while ((opt = getopt(argc, argv, "+i:o:f:m:t:T:dnCB:S:M:x:QN:D:W:w:e:P:KEq:s:RFc:l:")) > 0)
++  while ((opt = getopt(argc, argv, "+i:o:f:m:t:T:dnCB:S:M:x:QN:D:W:w:e:P:KEq:s:RFc:l:b:I")) > 0)
+ 
+     switch (opt)
+     {
+@@ -10521,8 +10543,12 @@ int main(int argc, char **argv)
+       {
+         extract_requests = &extract_requests_ipp;
+         extract_response_codes = &extract_response_codes_ipp;
+-      }
+-      else
++      }else if (!strcmp(optarg, "QUIC")) {
++        extract_requests = &extract_requests_quic;
++        extract_response_codes = &extract_response_codes_quic;
++        is_quic = 1;
++        init_quic_info();
++      } else
+       {
+         FATAL("%s protocol is not supported yet!", optarg);
+       }
+@@ -10583,6 +10609,20 @@ int main(int argc, char **argv)
+         FATAL("Invalid source port number");
+       break;
+ 
++    case 'b': /* bind CPU core */
++          if (cpu_to_bind_given) FATAL("Multiple -b options not supported");
++            cpu_to_bind_given = 1;
++
++          if (sscanf(optarg, "%u", &cpu_to_bind) < 1 ||
++              optarg[0] == '-') FATAL("Bad syntax used for -b");
++
++          break;
++      
++    case 'I': /* SIGINT is okay */
++      if (ignore_sigint) FATAL("Multiple -I options not supported");
++        ignore_sigint = 1;
++      break;
++
+     default:
+ 
+       usage(argv[0]);
+@@ -10606,7 +10646,7 @@ int main(int argc, char **argv)
+             "afl-fuzz with sudo or by \"$ setcap cap_sys_admin+ep /path/to/afl-fuzz\".",
+             netns_name);
+   }
+-
++  start_time = get_cur_time();
+   setup_signal_handlers();
+   check_asan_opts();
+ 
+@@ -10704,8 +10744,6 @@ int main(int argc, char **argv)
+ 
+   check_binary(argv[optind]);
+ 
+-  start_time = get_cur_time();
+-
+   if (qemu_mode)
+     use_argv = get_qemu_argv(argv[0], argv + optind, argc - optind);
+   else
+@@ -10921,6 +10959,14 @@ stop_fuzzing:
+   ck_free(target_path);
+   ck_free(sync_id);
+ 
++  if(is_quic){
++    if(is_fuzz_with_dec_enc && !is_gen_train_data){
++      if(in_dir) ck_free(in_dir);
++    }
++    
++    free_quic_info();
++  }
++
+   destroy_ipsm();
+ 
+   alloc_report();
+diff --git a/ChatAFL/aflnet.c b/ChatAFL/aflnet.c
+index 0eea857..c4084d6 100644
+--- a/ChatAFL/aflnet.c
++++ b/ChatAFL/aflnet.c
+@@ -11,6 +11,8 @@
+ #include "alloc-inl.h"
+ #include "aflnet.h"
+ 
++#include "quic.h"
++
+ // Protocol-specific functions for extracting requests and responses
+ 
+ region_t *extract_requests_smtp(unsigned char *buf, unsigned int buf_size, unsigned int *region_count_ref)
+@@ -897,6 +899,445 @@ region_t *extract_requests_ipp(unsigned char *buf, unsigned int buf_size, unsign
+   return regions;
+ }
+ 
++region_t* extract_requests_quic(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref){
++  // should use unsigned char
++  unsigned char *mem;
++  unsigned int byte_count = 0;
++  unsigned int mem_count = 0;
++  unsigned int mem_size = 1024;
++  unsigned int region_count = 0;
++  int ret;
++  region_t *regions = NULL;
++
++  mem=(char *)ck_alloc(mem_size);
++
++  unsigned int cur_start = 0;
++  unsigned int cur_end = 0;
++
++  // Check what type of QUIC packet is this
++  while (byte_count < buf_size) {
++    memcpy(&mem[mem_count], buf + byte_count++, 1);
++
++    //Check if the region buffer length is 6 bytes (first few important bit to determine the QUIC packet header)
++    if(mem_count == 5){
++      unsigned int temp_count = 0;
++      unsigned int bytes_to_skip = 0;
++      unsigned int is_extracted_packet = 0;
++      enum PacketType packet_type;
++
++      // 1st bit: header form (0=short, 1=long)
++      // 2nd bit: fixed bit -> CHECK THIS What should the fixed bit be?
++
++      // make sure it is QUIC version 1
++      // validate the packet type
++      // when the position 7 (most significant bit) is set, long header packet
++      if(is_long_head_pkt(mem, mem_count)){
++        // get packet type
++        packet_type = get_packet_type(mem, mem_count);
++
++        // the position that store the dcid length is 5
++        unsigned int dcidLen = mem[5];
++        unsigned int dcid_offset = byte_count;
++        temp_count = 0;
++
++        // go after dcid, which is the scid length
++        while ((byte_count < buf_size) && (temp_count < (dcidLen + 1))) {
++          mem_count++;
++          cur_end++;
++
++          // make sure mem have enough space
++          if(mem_count == mem_size) {
++            //enlarge the mem buffer
++            mem_size = mem_size * 2;
++            mem=(char *)ck_realloc(mem, mem_size);
++          }
++          
++          memcpy(&mem[mem_count], buf + byte_count++, 1);
++          temp_count++;
++        }
++
++        // extract handshake packet dcid for later use when extracting 1-RTT packet from seed.
++        if(packet_type == Handshake && quic_info.one_rtt_dcid_count == 0){
++          add_cid(&quic_info.one_rtt_dcid, &quic_info.one_rtt_dcid_count, buf+dcid_offset, dcidLen);
++        }
++
++        // the position that store the scid length
++        unsigned int scidLen = mem[mem_count];
++        unsigned int scid_offset = byte_count;
++        temp_count = 0;
++
++        // store the scid for later use
++        if(packet_type == Handshake && quic_info.one_rtt_scid_count == 0){
++          add_cid(&quic_info.one_rtt_scid, &quic_info.one_rtt_scid_count, buf+scid_offset, scidLen);
++        }
++
++        // go after scid, which is the token length
++        while ((byte_count < buf_size) && (temp_count < (scidLen + 1))) {
++          mem_count++;
++          cur_end++;
++
++          // make sure mem have enough space
++          if(mem_count == mem_size) {
++            //enlarge the mem buffer
++            mem_size = mem_size * 2;
++            mem=(char *)ck_realloc(mem, mem_size);
++          }
++
++          memcpy(&mem[mem_count], buf + byte_count++, 1);
++          temp_count++;
++        }
++
++        // only Initial packets have token length and token
++        if(packet_type == Initial){
++          // the position that store the token length
++          unsigned int tokenLength = mem[mem_count];
++          temp_count = 0;
++
++          // go after token, which is the first byte of packet length (plus 1)
++          while ((byte_count < buf_size) && (temp_count < (tokenLength + 1))) {
++            mem_count++;
++            cur_end++;
++
++            // make sure mem have enough space
++            if(mem_count == mem_size) {
++              //enlarge the mem buffer
++              mem_size = mem_size * 2;
++              mem=(char *)ck_realloc(mem, mem_size);
++            }
++
++            memcpy(&mem[mem_count], buf + byte_count++, 1);
++            temp_count++;
++          }
++        }
++
++        bytes_to_skip = variable_len_int_decode(mem, &mem_count, &mem_size, &cur_end, buf, &byte_count, buf_size);
++        temp_count = 0;
++
++        // when fuzzing with encryption, minus the auth tag length (there is no auth tag in the plain payload)
++        // if(is_fuzz_with_dec_enc){
++        //   bytes_to_skip = bytes_to_skip - AUTH_TAG_SIZE; // set this when using decrypted seed.
++        // }
++
++        // extract the whole packet, if byte_to_skip + mem_count > mem_size, increase the size;
++        // once extract the whole packet, decrypt the packet 
++        while ((byte_count < buf_size) && (temp_count < bytes_to_skip)) {
++          mem_count++;
++          cur_end++;
++
++          // make sure mem have enough space
++          if(mem_count == mem_size) {
++            //enlarge the mem buffer
++            mem_size = mem_size * 2;
++            mem=(char *)ck_realloc(mem, mem_size);
++          }
++
++          memcpy(&mem[mem_count], buf + byte_count++, 1);
++          temp_count++;
++        }
++
++        is_extracted_packet = 1;
++
++        // when the position 7 (most significant bit) is not set, short header packet
++      }else if(!(mem[0] & (1 << 7) && (mem[0] & (1 << 6)))){
++        // short header
++        packet_type = OneRTT;
++
++        // we can use the dcid in the 1-RTT packet, we know it is a new 1-RTT packet when there is a first byte + 8 dcid bytes
++        while (byte_count < buf_size){
++          mem_count++;
++          cur_end++;
++
++          // make sure mem have enough space
++          if(mem_count == mem_size) {
++            //enlarge the mem buffer
++            mem_size = mem_size * 2;
++            mem=(char *)ck_realloc(mem, mem_size);
++          }
++
++          memcpy(&mem[mem_count], buf + byte_count++, 1);
++
++          // break if the next few bytes are likely to be a new packet.
++          if(byte_count < buf_size){
++            if((byte_count + 1 + CONN_ID_MAX_SIZE) < buf_size){
++              if(is_short_head_pkt(buf + byte_count, 1+CONN_ID_MAX_SIZE, 0) == 1){
++                break;
++              }
++            }
++
++            if((byte_count + CHECK_LONG_HEAD_PKT_LEN) < buf_size){
++              if(is_long_head_pkt(buf + byte_count, CHECK_LONG_HEAD_PKT_LEN) == 1){
++                break;
++              }
++            } 
++            
++            if((byte_count + CHECK_VERSION_NEGO_PKT_LEN) < buf_size){
++              if(is_version_nego_pkt(buf + byte_count, CHECK_VERSION_NEGO_PKT_LEN) == 1){
++                break;
++              }
++            }
++          }
++        }
++
++        is_extracted_packet = 1;
++      }
++
++      if(is_extracted_packet){
++        //Create one region
++        region_count++;
++        regions = (region_t *)ck_realloc(regions, region_count * sizeof(region_t));
++        regions[region_count - 1].start_byte = cur_start;
++        regions[region_count - 1].end_byte = cur_end;
++        regions[region_count - 1].state_sequence = NULL;
++        regions[region_count - 1].state_count = 0;
++
++        //Check if the last byte has been reached
++        if (cur_end < buf_size - 1) {
++          mem_count = 0;
++          cur_start = cur_end + 1;
++          cur_end = cur_start;
++        }
++      }
++    } else {
++      mem_count++;
++      cur_end++;
++
++      //Check if the last byte has been reached
++      if (cur_end == buf_size - 1) {
++        region_count++;
++        regions = (region_t *)ck_realloc(regions, region_count * sizeof(region_t));
++        regions[region_count - 1].start_byte = cur_start;
++        regions[region_count - 1].end_byte = cur_end;
++        regions[region_count - 1].state_sequence = NULL;
++        regions[region_count - 1].state_count = 0;
++        break;
++      }
++
++      if (mem_count == mem_size) {
++        //enlarge the mem buffer
++        mem_size = mem_size * 2;
++        mem=(char *)ck_realloc(mem, mem_size);
++      }
++    }
++  }
++
++  if (mem) ck_free(mem);
++
++  //in case region_count equals zero, it means that the structure of the buffer is broken
++  //hence we create one region for the whole buffer
++  if ((region_count == 0) && (buf_size > 0)) {
++    regions = (region_t *)ck_realloc(regions, sizeof(region_t));
++    regions[0].start_byte = 0;
++    regions[0].end_byte = buf_size - 1;
++    regions[0].state_sequence = NULL;
++    regions[0].state_count = 0;
++
++    region_count = 1;
++  }
++
++  *region_count_ref = region_count;
++  return regions;
++}
++
++// parse QUIC packet and get the response code
++unsigned int* extract_response_codes_quic(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref){
++  // should use unsigned char
++  unsigned char *mem;
++  unsigned int byte_count = 0;
++  unsigned int mem_count = 0;
++  unsigned int mem_size = 1024;
++  int ret;
++
++  unsigned int *state_sequence = NULL;
++  unsigned int state_count = 0;
++
++  mem=(char *)ck_alloc(mem_size);
++
++  //Add initial state
++  state_count++;
++  state_sequence = (unsigned int *)ck_realloc(state_sequence, state_count * sizeof(unsigned int));
++  state_sequence[state_count - 1] = 0;
++
++  while (byte_count < buf_size) {
++    memcpy(&mem[mem_count], buf + byte_count++, 1);
++    
++    // Check if the region buffer length is 6 bytes (first few important bit to determine the QUIC packet type)
++    if(mem_count == 5){
++      unsigned int temp_count = 0;
++      unsigned int bytes_to_skip = 0;
++      unsigned is_extracted_packet = 0;
++      enum PacketType packet_type;
++
++      // make sure it is QUIC version 1 (which is long header packet)
++      if(is_long_head_pkt(mem, mem_count)){
++        // validate the packet type
++        // when the position 7 (most significant bit) is set, long header packet
++        if((mem[0] & (1 << 7))){
++          // get packet type
++          packet_type = get_packet_type(mem, mem_count);
++
++          // the position that store the dcid length is 5
++          unsigned int dcidLen = mem[5];
++          unsigned int dcid_offset = byte_count;
++          temp_count = 0;
++
++          // go after dcid, which is the scid length
++          while ((byte_count < buf_size) && (temp_count < (dcidLen + 1))) {
++            mem_count++;
++
++            // make sure the packet can be fit into mem
++            // if byte_to_skip + mem_count > mem_size, increase the size;
++            if(mem_count == mem_size) {
++              //enlarge the mem buffer
++              mem_size = mem_size * 2;
++              mem=(char *)ck_realloc(mem, mem_size);
++            }
++
++            memcpy(&mem[mem_count], buf + byte_count++, 1);
++            temp_count++;
++          }
++
++          // the position that store the scid length
++          unsigned int scidLen = mem[mem_count];
++          temp_count = 0;
++
++          // go after scid, which is the token length
++          while ((byte_count < buf_size) && (temp_count < (scidLen + 1))) {
++            mem_count++;
++
++            // make sure the packet can be fit into mem
++            // if byte_to_skip + mem_count > mem_size, increase the size;
++            if(mem_count == mem_size) {
++              //enlarge the mem buffer
++              mem_size = mem_size * 2;
++              mem=(char *)ck_realloc(mem, mem_size);
++            }
++
++            memcpy(&mem[mem_count], buf + byte_count++, 1);
++            temp_count++;
++          }
++          
++          if(packet_type == Initial){
++            // only Initial packets have token length and token
++            // the position that store the token length
++            unsigned int tokenLength = mem[mem_count];
++            temp_count = 0;
++
++            // go after token, which is the first byte of packet length (plus 1)
++            while ((byte_count < buf_size) && (temp_count < (tokenLength + 1))) {
++              mem_count++;
++
++              // make sure the packet can be fit into mem
++              // if byte_to_skip + mem_count > mem_size, increase the size;
++              if(mem_count == mem_size) {
++                //enlarge the mem buffer
++                mem_size = mem_size * 2;
++                mem=(char *)ck_realloc(mem, mem_size);
++              }
++              
++              memcpy(&mem[mem_count], buf + byte_count++, 1);
++              temp_count++;
++            }
++          }
++        }
++
++        bytes_to_skip = variable_len_int_decode(mem, &mem_count, &mem_size, NULL, buf, &byte_count, buf_size);
++        temp_count = 0;
++
++        // extract the whole packet
++        while ((byte_count < buf_size) && (temp_count < bytes_to_skip)) {
++          mem_count++;
++
++          // make sure the packet can be fit into mem
++          // if byte_to_skip + mem_count > mem_size, increase the size;
++          if(mem_count == mem_size) {
++            //enlarge the mem buffer
++            mem_size = mem_size * 2;
++            mem=(char *)ck_realloc(mem, mem_size);
++          }
++
++          memcpy(&mem[mem_count], buf + byte_count++, 1);
++          temp_count++;          
++        }
++
++        is_extracted_packet = 1;
++
++      // check if it is short header packet (1-RTT packet)  
++      // short header packet has the most significant bit == 0 and the second most significant bit == 1
++      }else if(!(mem[0] & (1 << 7)) && (mem[0] & (1 << 6))){
++        packet_type = OneRTT;
++
++        // loop until a new packet is found
++        while (byte_count < buf_size) {
++          mem_count++;
++
++          // make sure mem have enough space
++          if(mem_count == mem_size) {
++            //enlarge the mem buffer
++            mem_size = mem_size * 2;
++            mem=(char *)ck_realloc(mem, mem_size);
++          }
++
++          memcpy(&mem[mem_count], buf + byte_count++, 1);
++
++          // not only need to check for 1-RTT, also check for long header packet (Initial, Handshake, etc.)
++          // can actually implement a function to query AI (if this N bytes look like a header for quic packet?)
++          // break if the next few bytes are likely to be a new packet.
++          if(byte_count < buf_size){
++            if((byte_count + 1 + CONN_ID_MAX_SIZE) < buf_size){  
++              if(is_short_head_pkt(buf + byte_count, 1+CONN_ID_MAX_SIZE, 1) == 1){
++                break;
++              }
++            }
++            
++            if((byte_count + CHECK_VERSION_NEGO_PKT_LEN) < buf_size){
++              if(is_version_nego_pkt(buf + byte_count, CHECK_VERSION_NEGO_PKT_LEN) == 1){
++                break;
++              }
++            }
++
++            if((byte_count + CHECK_LONG_HEAD_PKT_LEN) < buf_size){
++              if(is_long_head_pkt(buf + byte_count, CHECK_LONG_HEAD_PKT_LEN) == 1){
++                break;
++              }
++            }
++          }
++        }
++
++        is_extracted_packet = 1;
++      }
++
++      if(is_extracted_packet){
++        unsigned int frame_type = 0;
++
++        if(packet_type == OneRTT){
++          packet_type = ZeroRTT; // temporary use this because we does not have enough bit in response code and server will not send 0-RTT
++        }
++
++        //add a new response code (frame_type will take 30 bits)
++        unsigned int message_code = ((packet_type << 30) | frame_type) + 1;
++        state_count++;
++        state_sequence = (unsigned int *)ck_realloc(state_sequence, state_count * sizeof(unsigned int));
++        state_sequence[state_count - 1] = message_code;
++        mem_count = 0;
++      }
++    }else{
++      mem_count++;
++      
++      // when run out of memory
++      if (mem_count == mem_size) {
++        //enlarge the mem buffer
++        mem_size = mem_size * 2;
++        mem=(char *)ck_realloc(mem, mem_size);
++      }
++    }
++  }
++    
++  if (mem) ck_free(mem);
++
++  *state_count_ref = state_count;
++  return state_sequence;
++}
++
+ unsigned int *extract_response_codes_smtp(unsigned char *buf, unsigned int buf_size, unsigned int *state_count_ref)
+ {
+   char *mem;
+diff --git a/ChatAFL/aflnet.h b/ChatAFL/aflnet.h
+index 4165287..eca5ac9 100644
+--- a/ChatAFL/aflnet.h
++++ b/ChatAFL/aflnet.h
+@@ -69,6 +69,7 @@ unsigned int* extract_response_codes_dtls12(unsigned char* buf, unsigned int buf
+ unsigned int* extract_response_codes_sip(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref);
+ unsigned int* extract_response_codes_http(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref);
+ unsigned int* extract_response_codes_ipp(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref);
++unsigned int* extract_response_codes_quic(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref);
+ extern unsigned int* (*extract_response_codes)(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref);
+ 
+ region_t* extract_requests_smtp(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref);
+@@ -82,6 +83,7 @@ region_t* extract_requests_dtls12(unsigned char* buf, unsigned int buf_size, uns
+ region_t* extract_requests_sip(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref);
+ region_t* extract_requests_http(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref);
+ region_t* extract_requests_ipp(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref);
++region_t* extract_requests_quic(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref);
+ extern region_t* (*extract_requests)(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref);
+ 
+ // Network communication functions
+diff --git a/ChatAFL/chat-llm.c b/ChatAFL/chat-llm.c
+index 92974e1..34cf88c 100644
+--- a/ChatAFL/chat-llm.c
++++ b/ChatAFL/chat-llm.c
+@@ -150,8 +150,8 @@ char *chat_with_llm(char *prompt, char *model, int tries, float temperature)
+ char *construct_prompt_stall(char *protocol_name, char *examples, char *history)
+ {
+     char *template = "In the %s protocol, the communication history between the %s client and the %s server is as follows."
+-                     "The next proper client request that can affect the server's state are:\\n\\n"
+-                     "Desired format of real client requests:\\n%sCommunication History:\\n\\\"\\\"\\\"\\n%s\\\"\\\"\\\"";
++                     "The next proper client packet that can affect the server's state are:\\n\\n"
++                     "Desired format of real client packets:\\n%sCommunication History:\\n\\\"\\\"\\\"\\n%s\\\"\\\"\\\"";
+ 
+     char *prompt = NULL;
+     asprintf(&prompt, template, protocol_name, protocol_name, protocol_name, examples, history);
+@@ -168,18 +168,29 @@ char *construct_prompt_stall(char *protocol_name, char *examples, char *history)
+ char *construct_prompt_for_templates(char *protocol_name, char **final_msg)
+ {
+     // Give one example for learning formats
+-    char *prompt_rtsp_example = "For the RTSP protocol, the DESCRIBE client request template is:\\n"
+-                                "DESCRIBE: [\\\"DESCRIBE <<VALUE>>\\\\r\\\\n\\\","
+-                                "\\\"CSeq: <<VALUE>>\\\\r\\\\n\\\","
+-                                "\\\"User-Agent: <<VALUE>>\\\\r\\\\n\\\","
+-                                "\\\"Accept: <<VALUE>>\\\\r\\\\n\\\","
+-                                "\\\"\\\\r\\\\n\\\"]";
+-
+-    char *prompt_http_example = "For the HTTP protocol, the GET client request template is:\\n"
++    // char *prompt_rtsp_example = "For the RTSP protocol, the DESCRIBE client request template is:\\n"
++    //                             "DESCRIBE: [\\\"DESCRIBE <<VALUE>>\\\\r\\\\n\\\","
++    //                             "\\\"CSeq: <<VALUE>>\\\\r\\\\n\\\","
++    //                             "\\\"User-Agent: <<VALUE>>\\\\r\\\\n\\\","
++    //                             "\\\"Accept: <<VALUE>>\\\\r\\\\n\\\","
++    //                             "\\\"\\\\r\\\\n\\\"]";
++    
++    // the example below will show nothing in the prompt because 0x00 is NULL
++    // unsigned char version_bytes[4] = {0x00, 0x00, 0x00, 0x01}; // the only fixed field in QUIC long header packets
++    // char *prompt_quic_example = NULL;
++    // asprintf(&prompt_quic_example, "For the QUIC protocol, the Initial client packet template is:\\n"
++    //                         "Initial: [\\\"<<VALUE>>%c%c%c%c<<VALUE>>\\\"]", version_bytes[0], version_bytes[1], version_bytes[2], version_bytes[3]);
++
++    // technically only the version is fixed for long header packet, 
++    // but ChatAFL will not convert this byte string into raw data, affecting the grammar matching...
++    char *prompt_quic_example = "For the QUIC protocol, the Initial client packet template in hex string according to RFC 9000 is:\\n"
++                                "Initial: [\\\"<<Value>> 0x00 0x00 0x00 0x01\\\", \\\"<<VALUE>>\\\"]";
++
++    char *prompt_http_example = "For the HTTP protocol, the GET client packet template is:\\n"
+                                 "GET: [\\\"GET <<VALUE>>\\\\r\\\\n\\\"]";
+ 
+     char *msg = NULL;
+-    asprintf(&msg, "%s\\n%s\\nFor the %s protocol, all of client request templates are :", prompt_rtsp_example, prompt_http_example, protocol_name);
++    asprintf(&msg, "%s\\n%s\\nFor the %s protocol, all of client packet templates are :", prompt_quic_example, prompt_http_example, protocol_name);
+     *final_msg = msg;
+     /** Format of prompt_grammars
+     prompt_grammars = [
+@@ -197,7 +208,7 @@ char *construct_prompt_for_templates(char *protocol_name, char **final_msg)
+ char *construct_prompt_for_remaining_templates(char *protocol_name, char *first_question, char *first_answer)
+ {
+     char *second_question = NULL;
+-    asprintf(&second_question, "For the %s protocol, other templates of client requests are:", protocol_name);
++    asprintf(&second_question, "For the %s protocol, other templates of client packets are:", protocol_name);
+ 
+     json_object *answer_str = json_object_new_string(first_answer);
+     // printf("The First Question\n%s\n\n", first_question);
+@@ -313,7 +324,7 @@ char *construct_prompt_for_protocol_message_types(char *protocol_name)
+     char *prompt = NULL;
+ 
+     // transfer the prompt into string
+-    asprintf(&prompt, "In the %s protocol, the message types are: \\n\\nDesired format:\\n<comma_separated_list_of_states_in_uppercase_and_without_whitespaces>", protocol_name);
++    asprintf(&prompt, "In the %s protocol, the packet types are: \\n\\nDesired format:\\n<comma_separated_list_of_states_in_uppercase_and_without_whitespaces>", protocol_name);
+ 
+     return prompt;
+ }
+@@ -361,8 +372,8 @@ char *construct_prompt_for_requests_to_states(const char *protocol_name,
+     }
+ 
+     asprintf(&prompt,
+-             "In the %s protocol, if the server just starts, to reach the INIT state, the sequence of client requests can be:\\n"
+-             "%.*s\\nSimilarly, in the %s protocol, if the server just starts, to reach the %.*s state, the sequence of client requests can be:\\n",
++             "In the %s protocol, if the server just starts, to reach the INIT state, the sequence of client packets can be:\\n"
++             "%.*s\\nSimilarly, in the %s protocol, if the server just starts, to reach the %.*s state, the sequence of client packets can be:\\n",
+              protocol_name,
+              example_request_len,
+              example_requests_json_str + 1,
+@@ -916,9 +927,9 @@ int min(int a, int b) {
+ char *enrich_sequence(char *sequence, khash_t(strSet) * missing_message_types)
+ {
+     const char *prompt_template =
+-        "The following is one sequence of client requests:\\n"
++        "The following is one sequence of client packets:\\n"
+         "%.*s\\n"
+-        "Please add the %.*s client requests in the proper locations, and the modified sequence of client requests is:";
++        "Please add the %.*s client packets in the proper locations, and the modified sequence of client packets is:";
+ 
+     int missing_fields_len = 0;
+     int missing_fields_capacity = 100;
+@@ -965,6 +976,8 @@ char *enrich_sequence(char *sequence, khash_t(strSet) * missing_message_types)
+     ck_free(missing_fields_seq);
+     json_object_put(sequence_escaped);
+ 
++    // printf("enrich prompt is:\n %s\n", prompt);
++
+     char *response = chat_with_llm(prompt, "instruct", ENRICHMENT_RETRIES, 0.5);
+ 
+     free(prompt);

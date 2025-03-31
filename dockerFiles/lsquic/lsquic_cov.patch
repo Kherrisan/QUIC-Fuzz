@@ -1,0 +1,79 @@
+diff --git a/bin/http_server.c b/bin/http_server.c
+index 80d5153..5b64eb4 100644
+--- a/bin/http_server.c
++++ b/bin/http_server.c
+@@ -14,6 +14,7 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <inttypes.h>
++#include <signal.h>
+ 
+ #ifndef WIN32
+ #include <netinet/in.h>
+@@ -1925,6 +1926,9 @@ static const struct lsquic_hset_if header_bypass_api =
+     .hsi_discard_header_set = interop_server_hset_destroy,
+ };
+ 
++void dump_coverage(){
++    exit(0);
++}
+ 
+ int
+ main (int argc, char **argv) 
+@@ -1935,6 +1939,8 @@ main (int argc, char **argv)
+     struct prog prog;
+     const char *const *alpn;
+ 
++    signal(SIGUSR1, dump_coverage);
++
+ #if !(HAVE_OPEN_MEMSTREAM || HAVE_REGEX)
+     fprintf(stderr, "cannot run server without regex or open_memstream\n");
+     return 1;
+
+diff --git a/src/liblsquic/lsquic_conn.c b/src/liblsquic/lsquic_conn.c
+index 3ee9bb4..0638abe 100644
+--- a/src/liblsquic/lsquic_conn.c
++++ b/src/liblsquic/lsquic_conn.c
+@@ -226,15 +226,34 @@ lsquic_conn_abort (struct lsquic_conn *lconn)
+ void
+ lsquic_generate_cid (lsquic_cid_t *cid, size_t len)
+ {
+-    if (!len)
+-    {
+-        /* If not set, generate ID between 8 and MAX_CID_LEN bytes in length */
+-        RAND_bytes((uint8_t *) &len, sizeof(len));
+-        len %= MAX_CID_LEN - 7;
+-        len += 8;
++    // QUIC-Fuzz ADDED HERE
++    static uint8_t con_id = 1;
++
++    if(!len){
++        len = 8;
++    }
++
++    for(unsigned int i=0; i<len; i++){
++        cid->buf[i] = con_id;
+     }
+-    RAND_bytes(cid->idbuf, len);
++
+     cid->len = len;
++    con_id += 1;
++
++    if(con_id == 255){
++        con_id = 1;
++    }
++    // QUIC-Fuzz ADDED END
++
++    // if (!len)
++    // {
++    //     /* If not set, generate ID between 8 and MAX_CID_LEN bytes in length */
++    //     RAND_bytes((uint8_t *) &len, sizeof(len));
++    //     len %= MAX_CID_LEN - 7;
++    //     len += 8;
++    // }
++    // RAND_bytes(cid->idbuf, len);
++    // cid->len = len;
+ }
+ 
+ 
+

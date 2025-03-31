@@ -1,0 +1,20 @@
+diff --git a/quiche/quic/tools/quic_server_bin.cc b/quiche/quic/tools/quic_server_bin.cc
+index 3c1ccd690..950c560fb 100644
+--- a/quiche/quic/tools/quic_server_bin.cc
++++ b/quiche/quic/tools/quic_server_bin.cc
+@@ -12,8 +12,15 @@
+ #include "quiche/quic/tools/quic_toy_server.h"
+ #include "quiche/common/platform/api/quiche_command_line_flags.h"
+ #include "quiche/common/platform/api/quiche_system_event_loop.h"
++#include <signal.h>
++
++void dump_coverage(int sig){
++  exit(0);
++}
+ 
+ int main(int argc, char* argv[]) {
++  signal(SIGUSR1, dump_coverage);
++
+   quiche::QuicheSystemEventLoop event_loop("quic_server");
+   const char* usage = "Usage: quic_server [options]";
+   std::vector<std::string> non_option_args =

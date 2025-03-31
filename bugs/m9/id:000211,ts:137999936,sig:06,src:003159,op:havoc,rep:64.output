@@ -1,0 +1,66 @@
+=================================================================
+==140115==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x502000004c12 at pc 0x56038cf12698 bp 0x7ffcc356ea40 sp 0x7ffcc356e1e0
+READ of size 8 at 0x502000004c12 thread T0
+    #0 0x56038cf12697 in MemcmpInterceptorCommon(void*, int (*)(void const*, void const*, unsigned long), void const*, void const*, unsigned long) (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0xa8697) (BuildId: 15f98ad87b20d1e852b2fe3bcbaeeb24b7d02a22)
+    #1 0x56038cf12c89 in bcmp (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0xa8c89) (BuildId: 15f98ad87b20d1e852b2fe3bcbaeeb24b7d02a22)
+    #2 0x56038cfd4445 in xqc_server_request_read_notify /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1371:17
+    #3 0x56038cffe72b in xqc_h3_request_on_recv_header /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_request.c:722:11
+    #4 0x56038cfe9807 in xqc_h3_stream_process_request /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:977:27
+    #5 0x56038cfeda04 in xqc_h3_stream_process_bidi_payload /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:1242:21
+    #6 0x56038cfeda04 in xqc_h3_stream_process_bidi /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:1441:18
+    #7 0x56038cfedd71 in xqc_h3_stream_process_in /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:1483:21
+    #8 0x56038cfef456 in xqc_h3_stream_process_data /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:1651:15
+    #9 0x56038cff1424 in xqc_h3_stream_read_notify /home/kai/research/quic-fuzz/quicServers/xquic/src/http3/xqc_h3_stream.c:1842:15
+    #10 0x56038d0a691c in xqc_process_read_streams /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_stream.c:1643:15
+    #11 0x56038d0333e4 in xqc_engine_process_conn /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:740:9
+    #12 0x56038d035382 in xqc_engine_main_logic /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:907:9
+    #13 0x56038d03a179 in xqc_engine_main_logic_internal /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:848:5
+    #14 0x56038d03a179 in xqc_engine_packet_process /home/kai/research/quic-fuzz/quicServers/xquic/src/transport/xqc_engine.c:1328:9
+    #15 0x56038cfd59ab in xqc_server_socket_read_handler /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1679:15
+    #16 0x56038cfdbd9a in xqc_server_socket_event_callback /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:1707:9
+    #17 0x7fd63ff2613e  (/lib/x86_64-linux-gnu/libevent-2.1.so.7+0x2113e) (BuildId: fa530767e61eeaced04441ac79362efa83c08dd0)
+    #18 0x7fd63ff2687e in event_base_loop (/lib/x86_64-linux-gnu/libevent-2.1.so.7+0x2187e) (BuildId: fa530767e61eeaced04441ac79362efa83c08dd0)
+    #19 0x56038cfda124 in main /home/kai/research/quic-fuzz/quicServers/xquic/tests/test_server.c:2634:5
+    #20 0x7fd63f904082 in __libc_start_main /build/glibc-LcI20x/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #21 0x56038cef766d in _start (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0x8d66d) (BuildId: 15f98ad87b20d1e852b2fe3bcbaeeb24b7d02a22)
+
+0x502000004c12 is located 0 bytes after 2-byte region [0x502000004c10,0x502000004c12)
+allocated by thread T0 here:
+    #0 0x56038cf9272e in malloc (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0x12872e) (BuildId: 15f98ad87b20d1e852b2fe3bcbaeeb24b7d02a22)
+    #1 0x56038d13415e in xqc_malloc /home/kai/research/quic-fuzz/quicServers/xquic/src/common/xqc_malloc.h:36:12
+    #2 0x56038d13415e in xqc_var_buf_realloc /home/kai/research/quic-fuzz/quicServers/xquic/src/common/utils/var_buf/xqc_var_buf.c:96:31
+    #3 0x56038d13415e in xqc_var_buf_save_prepare /home/kai/research/quic-fuzz/quicServers/xquic/src/common/utils/var_buf/xqc_var_buf.c:171:25
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/home/kai/research/quic-fuzz/quicServers/xquic/build/tests/test_server+0xa8697) (BuildId: 15f98ad87b20d1e852b2fe3bcbaeeb24b7d02a22) in MemcmpInterceptorCommon(void*, int (*)(void const*, void const*, unsigned long), void const*, void const*, unsigned long)
+Shadow bytes around the buggy address:
+  0x502000004980: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fa
+  0x502000004a00: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fa
+  0x502000004a80: fa fa fd fa fa fa fd fa fa fa 00 00 fa fa 00 04
+  0x502000004b00: fa fa 00 00 fa fa fd fd fa fa fd fd fa fa fd fd
+  0x502000004b80: fa fa fd fd fa fa 00 fa fa fa fd fa fa fa 01 fa
+=>0x502000004c00: fa fa[02]fa fa fa 01 fa fa fa 02 fa fa fa fa fa
+  0x502000004c80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x502000004d00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x502000004d80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x502000004e00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x502000004e80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==140115==ABORTING

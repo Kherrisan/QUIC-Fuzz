@@ -1,0 +1,35 @@
+No token file present. Will create one as <demo_token_store.bin>.
+Starting Picoquic server (v1.1.20.0) on port 4433, server name = ::, just_once = 0, do_retry = 0
+Accept enable multipath: 0.
+Waiting for packets.
+=================================================================
+==2019559==ERROR: AddressSanitizer: attempting double-free on 0x503000025ea0 in thread T0:
+    #0 0x559b2fec9b56 in free (/home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicdemo+0x101b56) (BuildId: 599165e114c17d067c23077f9394739304bfb90c)
+    #1 0x559b300bc98c in server_handle_hello /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/picotls.c:4854:5
+    #2 0x559b300bc98c in handle_server_handshake_message /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/picotls.c:5670:19
+    #3 0x559b300ae442 in handle_handshake_record.part.0 /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/picotls.c:5785:15
+    #4 0x559b300b9779 in handle_handshake_record /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/picotls.c:5760:5
+    #5 0x559b300b9779 in ptls_server_handle_message /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/picotls.c:6635:12
+    #6 0x559b30033b44 in picoquic_tls_stream_process /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/tls_api.c:2531:19
+    #7 0x559b2ff974af in picoquic_incoming_client_initial /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/packet.c:1559:23
+    #8 0x559b2ffa0272 in picoquic_incoming_segment /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/packet.c:2620:35
+    #9 0x559b2ffa0dbb in picoquic_incoming_packet_ex /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/packet.c:2780:15
+    #10 0x559b3000cfd9 in picoquic_packet_loop_v3 /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sockloop.c:834:23
+    #11 0x559b3000f117 in picoquic_packet_loop_v2 /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sockloop.c:1038:11
+    #12 0x559b3000f117 in picoquic_packet_loop /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquic/sockloop.c:1061:12
+    #13 0x559b2ff07a4d in quic_server /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicfirst/picoquicdemo.c:360:15
+    #14 0x559b2ff10501 in main /home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicfirst/picoquicdemo.c:1332:15
+    #15 0x7feefc495082 in __libc_start_main /build/glibc-LcI20x/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #16 0x559b2fe2ed3d in _start (/home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicdemo+0x66d3d) (BuildId: 599165e114c17d067c23077f9394739304bfb90c)
+
+0x503000025ea0 is located 0 bytes inside of 32-byte region [0x503000025ea0,0x503000025ec0)
+freed by thread T0 here:
+    #0 0x559b2fec9b56 in free (/home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicdemo+0x101b56) (BuildId: 599165e114c17d067c23077f9394739304bfb90c)
+    #1 0x559b300c40f5 in evp_keyex_exchange /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/openssl.c:699:9
+
+previously allocated by thread T0 here:
+    #0 0x559b2fec9dfe in malloc (/home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicdemo+0x101dfe) (BuildId: 599165e114c17d067c23077f9394739304bfb90c)
+    #1 0x559b300c4136 in evp_keyex_exchange /home/kai/research/quic-fuzz/quicServers/picoquic/picotls/lib/openssl.c:686:28
+
+SUMMARY: AddressSanitizer: double-free (/home/kai/research/quic-fuzz/quicServers/picoquic_old/picoquic/picoquicdemo+0x101b56) (BuildId: 599165e114c17d067c23077f9394739304bfb90c) in free
+==2019559==ABORTING

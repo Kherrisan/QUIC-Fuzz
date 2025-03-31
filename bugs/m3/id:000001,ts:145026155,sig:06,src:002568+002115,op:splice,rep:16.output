@@ -1,0 +1,63 @@
+No token file present. Will create one as <demo_token_store.bin>.
+=================================================================
+==1266598==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x503000025d9c at pc 0x55ab9dc32c2e bp 0x7ffcb93c8cd0 sp 0x7ffcb93c8cc8
+READ of size 1 at 0x503000025d9c thread T0
+    #0 0x55ab9dc32c2d in h3zero_parse_qpack_header_value /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero.c:415:19
+    #1 0x55ab9dc342d1 in h3zero_parse_qpack_header_frame /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero.c:650:29
+    #2 0x55ab9dc3dfdd in h3zero_parse_data_stream /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero_common.c:738:15
+    #3 0x55ab9dc41eac in h3zero_process_h3_server_data /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero_common.c:1200:11
+    #4 0x55ab9dc43e1e in h3zero_callback_data /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero_common.c:1425:12
+    #5 0x55ab9dc46492 in h3zero_callback /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero_common.c:1755:10
+    #6 0x55ab9daea2a7 in picoquic_stream_data_chunk_callback /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/frames.c:1043:9
+    #7 0x55ab9daea2a7 in picoquic_stream_network_input /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/frames.c:1226:17
+    #8 0x55ab9daea2a7 in picoquic_decode_stream_frame /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/frames.c:1307:13
+    #9 0x55ab9db10592 in picoquic_decode_frames /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/frames.c:6050:21
+    #10 0x55ab9db472f7 in picoquic_incoming_1rtt /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/packet.c:2355:19
+    #11 0x55ab9db49a64 in picoquic_incoming_segment /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/packet.c:2670:23
+    #12 0x55ab9db4b18b in picoquic_incoming_packet_ex /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/packet.c:2779:15
+    #13 0x55ab9dbb80df in picoquic_packet_loop_v3 /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/sockloop.c:885:23
+    #14 0x55ab9dbba2a7 in picoquic_packet_loop_v2 /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/sockloop.c:1089:11
+    #15 0x55ab9dbba2a7 in picoquic_packet_loop /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquic/sockloop.c:1112:12
+    #16 0x55ab9daaea4d in quic_server /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquicfirst/picoquicdemo.c:360:15
+    #17 0x55ab9dab7a93 in main /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquicfirst/picoquicdemo.c:1380:15
+    #18 0x7f1f98f30082 in __libc_start_main /build/glibc-LcI20x/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #19 0x55ab9d9d5d3d in _start (/home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquicdemo+0x68d3d) (BuildId: 7e028e6225e9cd2e0a75dfdb13423a593b641598)
+
+0x503000025d9c is located 0 bytes after 28-byte region [0x503000025d80,0x503000025d9c)
+allocated by thread T0 here:
+    #0 0x55ab9da70dfe in malloc (/home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picoquicdemo+0x103dfe) (BuildId: 7e028e6225e9cd2e0a75dfdb13423a593b641598)
+    #1 0x55ab9dc3e8a3 in h3zero_parse_data_stream /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero_common.c:680:47
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /home/kai/research/quic-fuzz/quicServers/picoquic/picoquic/picohttp/h3zero.c:415:19 in h3zero_parse_qpack_header_value
+Shadow bytes around the buggy address:
+  0x503000025b00: fa fa fd fd fd fa fa fa fd fd fd fa fa fa fd fd
+  0x503000025b80: fd fa fa fa fd fd fd fa fa fa fd fd fd fa fa fa
+  0x503000025c00: fd fd fd fa fa fa 00 00 00 fa fa fa 00 00 00 fa
+  0x503000025c80: fa fa 00 00 00 fa fa fa 00 00 00 fa fa fa fd fd
+  0x503000025d00: fd fa fa fa fd fd fd fa fa fa fd fd fd fa fa fa
+=>0x503000025d80: 00 00 00[04]fa fa fa fa fa fa fa fa fa fa fa fa
+  0x503000025e00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x503000025e80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x503000025f00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x503000025f80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x503000026000: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==1266598==ABORTING

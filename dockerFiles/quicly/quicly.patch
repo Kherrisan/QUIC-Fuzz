@@ -1,0 +1,32 @@
+diff --git a/deps/picotls b/deps/picotls
+--- a/deps/picotls
++++ b/deps/picotls
+@@ -1 +1 @@
+-Subproject commit 9de892ccf7b1d3dc9467ef92ba9314c155928037
++Subproject commit 9de892ccf7b1d3dc9467ef92ba9314c155928037-dirty
+diff --git a/src/cli.c b/src/cli.c
+index 5463095..d3950dc 100644
+--- a/src/cli.c
++++ b/src/cli.c
+@@ -879,6 +879,10 @@ static int run_server(int fd, struct sockaddr *sa, socklen_t salen)
+         return 1;
+     }
+ 
++    // #ifdef __AFL_HAVE_MANUAL_CONTROL
++    //     __AFL_INIT();
++    // #endif
++
+     while (1) {
+         fd_set readfds;
+         struct timeval *tv, tvbuf;
+@@ -1649,6 +1653,10 @@ int main(int argc, char **argv)
+     if (use_cid_encryptor) {
+         if (cid_key == NULL) {
+             static char random_key[17];
++            // QUIC-Fuzz ADDED HERE
++            // hardcode the server cid, but we can set this in command line see -B option
++            // static char random_key[17] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
++            // QUIC-Fuzz ADDED END
+             tlsctx.random_bytes(random_key, sizeof(random_key) - 1);
+             cid_key = random_key;
+         }

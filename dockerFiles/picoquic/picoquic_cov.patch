@@ -1,0 +1,82 @@
+diff --git a/picoquic/quicctx.c b/picoquic/quicctx.c
+index 7f9e0b3b..5754f5b5 100644
+--- a/picoquic/quicctx.c
++++ b/picoquic/quicctx.c
+@@ -1464,13 +1464,31 @@ int picoquic_get_version_index(uint32_t proposed_version)
+ 
+ static void picoquic_create_random_cnx_id(picoquic_quic_t* quic, picoquic_connection_id_t * cnx_id, uint8_t id_length)
+ {
++    // QUIC-Fuzz ADDED HERE
++    // hardcode connection ID
++    static int conn_id = 1;
++
+     if (id_length > 0) {
+-        picoquic_crypto_random(quic, cnx_id->id, id_length);
++        // picoquic_crypto_random(quic, cnx_id->id, id_length);
++
++        for(int i=0; i< id_length; i++){
++            cnx_id->id[i] = conn_id;
++        }
++
++        conn_id += 1;
++
++        if(conn_id == 255){
++            conn_id = 1;
++        }
+     }
++
+     if (id_length < sizeof(cnx_id->id)) {
+         memset(cnx_id->id + id_length, 0, sizeof(cnx_id->id) - id_length);
+     }
++
+     cnx_id->id_len = id_length;
++
++    // QUIC-Fuzz ADDED END
+ }
+ 
+ void picoquic_create_local_cnx_id(picoquic_quic_t* quic, picoquic_connection_id_t* cnx_id, uint8_t id_length, picoquic_connection_id_t cnx_id_remote)
+diff --git a/picoquic/sockloop.c b/picoquic/sockloop.c
+index 38e685b2..9be881e5 100644
+--- a/picoquic/sockloop.c
++++ b/picoquic/sockloop.c
+@@ -86,6 +86,8 @@
+ 
+ #include <pthread.h>
+ 
++int pthread_setname_np(pthread_t thread, const char *name);  // Explicit declaration
++
+ #ifndef SOCKET_TYPE
+ #define SOCKET_TYPE int
+ #endif
+diff --git a/picoquicfirst/picoquicdemo.c b/picoquicfirst/picoquicdemo.c
+index 1cf8342b..b2bd3cf1 100644
+--- a/picoquicfirst/picoquicdemo.c
++++ b/picoquicfirst/picoquicdemo.c
+@@ -81,6 +81,7 @@ static const char* token_store_filename = "demo_token_store.bin";
+ #include "performance_log.h"
+ #include "picoquic_config.h"
+ #include "picoquic_lb.h"
++#include <signal.h>
+ 
+ /*
+  * SIDUCK datagram demo call back.
+@@ -1272,6 +1273,10 @@ void usage()
+     exit(1);
+ }
+ 
++void dump_coverage(){
++    exit(0);
++}
++
+ int main(int argc, char** argv)
+ {
+     picoquic_quic_config_t config;
+@@ -1288,6 +1293,8 @@ int main(int argc, char** argv)
+     int is_client = 0;
+     int ret;
+ 
++    signal(SIGUSR1, dump_coverage);
++
+ #ifdef _WINDOWS
+     WSADATA wsaData = { 0 };
+     (void)WSA_START(MAKEWORD(2, 2), &wsaData);
