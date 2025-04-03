@@ -37,7 +37,7 @@ cd openssl-3.0.2
 make -j
 cd ..
 make clean all -j
-cd aflnet/llvm_mode
+cd llvm_mode
 make -j
 cd ../SnapFuzz/SaBRe/plugins
 ln -sf ../../snapfuzz snapfuzz

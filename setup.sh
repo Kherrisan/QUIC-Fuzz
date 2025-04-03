@@ -42,6 +42,6 @@ cd ..
 # dir to store results
 mkdir results
 
-sudo su
-echo core >/proc/sys/kernel/core_pattern
-exit
+# sudo su
+# echo core >/proc/sys/kernel/core_pattern
+# exit
