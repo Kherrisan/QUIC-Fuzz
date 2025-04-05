@@ -1,10 +1,10 @@
-# QUIC-Fuzz
+# 🤖 QUIC-Fuzz
 Code release for [QUIC-Fuzz: An Effective Greybox Fuzzer For The QUIC Protocol](https://arxiv.org/abs/2503.19402).
 
 An Extension of AFLNet to fuzz QUIC.
 This is tested on Ubuntu 22.04.
 
-## Installation
+## 💾 Installation
 ### "QUIC" installtaion using the build script. This will install QUIC-Fuzz.
 ```bash
 sudo ./setup.sh
@@ -59,7 +59,7 @@ echo core >/proc/sys/kernel/core_pattern
 exit
 ```
 
-## Fuzzing a new QUIC server:
+## 💻 Fuzzing a new QUIC server:
 In order to fuzz a new QUIC server, QUIC-Fuzz require a seed (same as AFLNet). There are few configurations you need to set before capturing the seed using the method shown in [AFLNet README.md](./aflnet/README.md):
 1) Hardcode the Source Connection ID (SCID) of the server.
 2) Start the packet number from 0 on both, client and server. 
@@ -67,3 +67,13 @@ In order to fuzz a new QUIC server, QUIC-Fuzz require a seed (same as AFLNet). T
 4) Hardcode the handshake (Finished) verify data on the client and server.
 
 These configurations can improve the fuzzer performance and stability. Once these are set, you can now compile and test the servers. We have include 6 examples in [./dockerFiles](./dockerFiles/), please read [./dockerFiles/README.md](./dockerFiles/README.md).
+
+
+## 🏅 Security Advisory Credit from QUIC developers
+This project has been acknowledged for contributing to the discovery and responsible disclosure of security vulnerabilities.
+
+- https://github.com/h2o/picotls/security/advisories/GHSA-w7c8-wjx9-vvvv
+- https://github.com/h2o/quicly/security/advisories/GHSA-mp3c-h5gg-mm6p
+- https://www.privateoctopus.com/2024/11/17/thanks-to-quictester-quic-fuzz.html
+
+We are proud to contribute to the security and robustness of open-source ecosystems through responsible vulnerability discovery and coordinated disclosure.
