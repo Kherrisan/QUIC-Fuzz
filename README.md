@@ -1,7 +1,7 @@
 # 🤖 QUIC-Fuzz
 Code release for [QUIC-Fuzz: An Effective Greybox Fuzzer For The QUIC Protocol](https://arxiv.org/abs/2503.19402).
 
-<a href="https://arxiv.org/abs/2503.19402"><img alt="Paper preview" align="right" width="266" src="preview.png"></a>
+<a href="https://arxiv.org/abs/2503.19402"><img alt="Paper preview" align="right" width="266" src="preview.png" style="background-color:white; border: none;"></a>
 
 An Extension of AFLNet to fuzz QUIC.
 This is tested on Ubuntu 22.04.
