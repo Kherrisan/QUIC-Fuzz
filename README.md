@@ -4,7 +4,7 @@ Code release for [QUIC-Fuzz: An Effective Greybox Fuzzer For The QUIC Protocol](
 <a href="https://arxiv.org/abs/2503.19402"><img alt="Paper preview" align="right" width="266" src="preview.png"></a>
 
 An Extension of AFLNet to fuzz QUIC.
-This is tested on Ubuntu 22.04.</br>
+This is tested on Ubuntu 22.04.</br></br>
 
 ## 💾 Installation
 ### "QUIC" installtaion using the build script. This will install QUIC-Fuzz.
