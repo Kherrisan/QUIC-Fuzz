@@ -79,3 +79,15 @@ This project has been acknowledged for contributing to the discovery and respons
 - https://www.privateoctopus.com/2024/11/17/thanks-to-quictester-quic-fuzz.html
 
 We are proud to contribute to the security and robustness of open-source ecosystems through responsible vulnerability discovery and coordinated disclosure.
+
+
+### Cite QUIC-Fuzz as:
+
+```
+@inproceedings{quicfuzz2025,
+    title={QUIC-Fuzz: An Effective Greybox Fuzzer For The {QUIC} Protocol}, 
+    author={Ang, Kian Kai and Ranasinghe, Damith C.},
+    booktitle = {European Symposium on Research in Computer Security (ESORICS)},
+    year = {2025}
+}
+```
