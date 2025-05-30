@@ -1,0 +1,3 @@
+[submodule "dockerFiles/Fuzztruction-Net_QUIC_experiment"]
+	path = dockerFiles/Fuzztruction-Net_QUIC_experiment
+	url = https://github.com/QUICTester/Fuzztruction-Net_QUIC_experiment.git
