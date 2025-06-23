@@ -1,5 +1,5 @@
 # Experiment using Docker
-We provide detailed instructions in each ```./<server_name>/README.md``` to run the fuzzing individually.
+We provide detailed instructions in each ```./<server_name>/README.md``` to run the fuzzing individually. To fuzz QUIC servers using Fuzztruction-Net, please refer to [./Fuzztruction-Net_QUIC_experiment](Fuzztruction-Net_QUIC_experiment).
 
 
 ## Analysis

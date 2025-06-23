@@ -1,6 +1,8 @@
 # 🤖 QUIC-Fuzz
 Code release for [QUIC-Fuzz: An Effective Greybox Fuzzer For The QUIC Protocol](https://arxiv.org/abs/2503.19402).
 
+<a href="https://arxiv.org/abs/2503.19402"><img alt="Paper preview" align="right" width="266" src="preview.png"></a>
+
 An Extension of AFLNet to fuzz QUIC.
 This is tested on Ubuntu 22.04.
 
@@ -77,3 +79,15 @@ This project has been acknowledged for contributing to the discovery and respons
 - https://www.privateoctopus.com/2024/11/17/thanks-to-quictester-quic-fuzz.html
 
 We are proud to contribute to the security and robustness of open-source ecosystems through responsible vulnerability discovery and coordinated disclosure.
+
+
+### Cite QUIC-Fuzz as:
+
+```
+@inproceedings{quicfuzz2025,
+    title={QUIC-Fuzz: An Effective Greybox Fuzzer For The {QUIC} Protocol}, 
+    author={Ang, Kian Kai and Ranasinghe, Damith C.},
+    booktitle = {European Symposium on Research in Computer Security (ESORICS)},
+    year = {2025}
+}
+```
