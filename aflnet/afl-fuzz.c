@@ -9729,7 +9729,7 @@ int main(int argc, char** argv) {
 #ifdef HAVE_AFFINITY
 #ifdef NOAFFIN_BENCH
 #else
-  bind_to_free_cpu();
+  // bind_to_free_cpu();
 #endif
 #endif /* HAVE_AFFINITY */
 

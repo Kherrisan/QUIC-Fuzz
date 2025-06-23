@@ -70,7 +70,9 @@ fi
 for i in $(seq 1 $RUNS); do
 	# check which CPU to use.
 	CPU_ID=$(next_available_cpu)
-    id=$(docker run --log-driver=json-file --log-opt max-size=10m --log-opt max-file=1 --cpus=1 --cpuset-cpus $CPU_ID -d -it $DOCIMAGE /bin/bash -c "cd ${WORKDIR} && ./run ${FUZZER} ${OUTDIR} '-b ${CPU_ID} ${OPTIONS}' ${TIMEOUT} ${SKIPCOUNT}")
+	cmd="docker run --log-driver=json-file --log-opt max-size=10m --log-opt max-file=1 --cpus=1 --cpuset-cpus $CPU_ID -it -d $DOCIMAGE /bin/bash -c \"cd ${WORKDIR} && ./run ${FUZZER} ${OUTDIR} '-b ${CPU_ID} ${OPTIONS}' ${TIMEOUT} ${SKIPCOUNT}\""
+	echo $cmd
+    id=$(eval $cmd)
 	cids+=(${id::12}) #store only the first 12 characters of a container ID
 done
 

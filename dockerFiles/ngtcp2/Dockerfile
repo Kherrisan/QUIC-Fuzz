@@ -21,6 +21,9 @@ RUN ln -s /usr/bin/clang-17 /usr/bin/clang && ln -s /usr/bin/clang-17 /usr/bin/c
 # install fuzzer
 WORKDIR /tmp
 RUN git clone https://github.com/QUICTester/QUIC-Fuzz.git quic-fuzz
+WORKDIR /tmp/quic-fuzz
+COPY aflnet.patch .
+RUN git apply aflnet.patch
 WORKDIR /tmp/quic-fuzz/aflnet
 RUN wget https://www.openssl.org/source/openssl-3.0.2.tar.gz
 RUN tar xzvf openssl-3.0.2.tar.gz
@@ -69,6 +72,8 @@ RUN make -j
 RUN make install
 WORKDIR /tmp/ngtcp2
 RUN git clone --recursive https://github.com/ngtcp2/nghttp3
+WORKDIR /tmp/ngtcp2/nghttp3/lib/sfparse
+RUN git checkout 6e15726
 WORKDIR /tmp/ngtcp2/nghttp3
 RUN git checkout 6bcfffb
 RUN autoreconf -i
@@ -97,6 +102,8 @@ RUN make -j
 RUN make install
 WORKDIR /tmp/ngtcp2_cov
 RUN git clone --recursive https://github.com/ngtcp2/nghttp3
+WORKDIR /tmp/ngtcp2_cov/nghttp3/lib/sfparse
+RUN git checkout 6e15726
 WORKDIR /tmp/ngtcp2_cov/nghttp3
 RUN git checkout 6bcfffb
 RUN autoreconf -i
@@ -121,5 +128,5 @@ RUN chmod +x cov_script
 COPY server-cert.pem server-cert.pem
 COPY server-key.pem server-key.pem
 COPY ngtcp2_seed ngtcp2_seed
-COPY ngtcp2_RetryClientAuth_seed ngtcp2_RetryClientAuth_seed
+# COPY ngtcp2_RetryClientAuth_seed ngtcp2_RetryClientAuth_seed
 ENV WORKDIR="/tmp"
