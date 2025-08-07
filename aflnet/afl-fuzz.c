@@ -3278,6 +3278,11 @@ EXP_ST void init_forkserver(char** argv) {
                            "allocator_may_return_null=1:"
                            "msan_track_origins=0", 0);
 
+    /* 遍历并打印 argv 数组中的所有参数 */
+    int i;
+    for(i = 0; argv[i] != NULL; i++) {
+        printf("argv[%d] = %s\n", i, argv[i]);
+    }
     execv(target_path, argv);
 
     /* Use a distinctive bitmap signature to tell the parent about execv()
@@ -8245,6 +8250,7 @@ EXP_ST void check_binary(u8* fname) {
       (!strncmp(target_path, "/var/tmp/", 9) && !strchr(target_path + 9, '/')))
      FATAL("Please don't keep binaries in /tmp or /var/tmp");
 
+  ACTF("target_path: %s\n", target_path);
   fd = open(target_path, O_RDONLY);
 
   if (fd < 0) PFATAL("Unable to open '%s'", target_path);

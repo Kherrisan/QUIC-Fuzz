@@ -20,10 +20,8 @@ RUN ln -s /usr/bin/clang-17 /usr/bin/clang && ln -s /usr/bin/clang-17 /usr/bin/c
 
 # install fuzzer
 WORKDIR /tmp
-RUN git clone https://github.com/QUICTester/QUIC-Fuzz.git quic-fuzz
+RUN git clone https://github.com/Kherrisan/QUIC-Fuzz.git quic-fuzz
 WORKDIR /tmp/quic-fuzz
-COPY aflnet.patch .
-RUN git apply aflnet.patch
 WORKDIR /tmp/quic-fuzz/aflnet
 RUN wget https://www.openssl.org/source/openssl-3.0.2.tar.gz
 RUN tar xzvf openssl-3.0.2.tar.gz
@@ -58,7 +56,7 @@ RUN sed -i "s/#define OPENAI_TOKEN \".*\"/#define OPENAI_TOKEN \"$OPENAI_API_KEY
     make clean all && \
     cp /tmp/quic-fuzz/aflnet/aflnet-replay aflnet-replay
 
-# start install the server
+# Make the aflnet version of the server
 WORKDIR /tmp
 RUN git clone --recursive https://github.com/ngtcp2/ngtcp2
 WORKDIR /tmp/ngtcp2
@@ -87,8 +85,9 @@ COPY ngtcp2.patch .
 RUN git apply ngtcp2.patch
 RUN autoreconf -i
 RUN ./configure CC=/tmp/quic-fuzz/aflnet/afl-clang-fast CXX="/tmp/quic-fuzz/aflnet/afl-clang-fast++" PKG_CONFIG_PATH=$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig --with-wolfssl --disable-shared --enable-static
-RUN AFL_USE_ASAN=1 CFLAGS="-fsanitize=address" CXXFLAGS="-fsanitize=address" LDFLAGS="-fsanitize=address" make -j check
+RUN AFL_USE_ASAN=1 CFLAGS="-fsanitize=address -g" CXXFLAGS="-fsanitize=address -g" LDFLAGS="-fsanitize=address -g" make -j check
 
+# Make the coverage version of the server
 WORKDIR /tmp
 RUN git clone --recursive https://github.com/ngtcp2/ngtcp2 ngtcp2_cov
 WORKDIR /tmp/ngtcp2_cov
